@@ -13,9 +13,10 @@ export async function POST() {
 
   if (error || !data.url) {
     return NextResponse.redirect(
-      new URL('/login?error=auth_failed', process.env.NEXT_PUBLIC_APP_URL!)
+      new URL('/login?error=auth_failed', process.env.NEXT_PUBLIC_APP_URL!),
+      { status: 303 }
     )
   }
 
-  return NextResponse.redirect(data.url)
+  return NextResponse.redirect(data.url, { status: 303 })
 }
