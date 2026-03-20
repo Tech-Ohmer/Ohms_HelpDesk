@@ -2,6 +2,8 @@
 
 Technical reference for the entire project — stack decisions, data model, routing, and file responsibilities.
 
+**Live URL:** https://ohms-help-desk.vercel.app  
+**GitHub:** https://github.com/Tech-Ohmer/Ohms_HelpDesk  
 **Last updated:** March 2026
 
 ---
@@ -14,7 +16,7 @@ Technical reference for the entire project — stack decisions, data model, rout
 | Language | TypeScript | 5.x | Type safety across the whole project |
 | Database | Supabase (PostgreSQL) | Latest | Free tier, real-time, built-in auth, Row Level Security |
 | Auth | Supabase Auth + GitHub OAuth | Latest | Free, no extra service, integrates with Supabase session management |
-| Email | Resend | 6.x | Cleanest API, 3,000 free emails/month, works without custom domain |
+| Email | Gmail SMTP + Nodemailer | Latest | Completely free, no domain needed, sends to any recipient |
 | Drag and Drop | @dnd-kit/core + sortable | 6.x / 10.x | Actively maintained, accessible, works with React 19 + Next.js 15 |
 | Styling | Tailwind CSS | 4.x | Utility-first, included in create-next-app scaffold |
 | Hosting | Vercel | Latest | Free tier, native Next.js support, auto-deploys from GitHub |
@@ -27,9 +29,29 @@ Technical reference for the entire project — stack decisions, data model, rout
 | shadcn/ui | Extra setup complexity for this project size; plain Tailwind is sufficient |
 | Prisma / Drizzle | Supabase client already handles DB access; ORM adds unnecessary complexity |
 | NextAuth.js | Supabase Auth handles OAuth natively; no need for a second auth library |
-| Nodemailer | Requires SMTP setup and Gmail app passwords; Resend API is cleaner |
+| Resend | Free tier restricts sending to only the signup email. Replaced with Gmail SMTP. |
 | Firebase | Vendor lock-in, pricing model complexity |
 | PlanetScale | Requires schema migration workflow; Supabase SQL editor is simpler for solo use |
+
+### Email provider decision: Resend → Gmail SMTP
+
+Initially planned to use Resend. During testing, discovered that Resend's free plan only allows sending to the email address used to sign up — not to arbitrary recipients. This makes it unsuitable for a helpdesk (users submit tickets with their own email addresses).
+
+Replaced with **Nodemailer + Gmail SMTP**:
+- Uses your own Gmail account as the sender
+- Gmail App Password for authentication (not your real password)
+- Sends to any email address, no restrictions
+- 500 emails/day free limit
+- Zero cost, zero domain required
+
+### Known Bugs Fixed
+
+| Bug | Root Cause | Fix |
+|---|---|---|
+| GitHub OAuth → 405 | Login route used HTTP 307 redirect (preserves POST method). Supabase authorize endpoint only accepts GET. | Changed to HTTP 303 (See Other) which always switches to GET. |
+| Resend emails not sending | Resend free tier restricts recipients to signup email only. | Replaced Resend with Gmail SMTP via nodemailer. |
+| `.env.local` not loading | File was named `.env` instead of `.env.local`. | Renamed correctly. |
+| Supabase 405 on authorize | `localhost:3000` not in Supabase allowed redirect URLs. | Added localhost URLs to Supabase URL Configuration. |
 
 ---
 

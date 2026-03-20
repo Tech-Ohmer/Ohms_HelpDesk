@@ -1,10 +1,11 @@
 # Setup Guide — my-helpdesk
 
-Complete step-by-step guide to get my-helpdesk running locally and deployed.
+Complete step-by-step guide to get my-helpdesk running locally and deployed to production.
 
-**Estimated time:** 20–30 minutes  
+**Live URL:** https://ohms-help-desk.vercel.app  
+**Estimated setup time:** 20–30 minutes  
 **Cost:** $0  
-**Date written:** March 2026
+**Last updated:** March 2026
 
 ---
 
@@ -12,7 +13,7 @@ Complete step-by-step guide to get my-helpdesk running locally and deployed.
 
 - Node.js 18+ installed on your machine
 - A personal GitHub account
-- A Gmail account (for Supabase and Resend signup)
+- A Gmail account
 - VS Code or any code editor
 
 ---
@@ -26,95 +27,100 @@ Complete step-by-step guide to get my-helpdesk running locally and deployed.
 3. Once logged in, click **New Project**
 4. Fill in:
    - **Name:** `my-helpdesk`
-   - **Database Password:** choose a strong password and save it somewhere
-   - **Region:** choose the closest to your location (e.g. Southeast Asia → Singapore)
+   - **Database Password:** choose a strong password and save it somewhere safe
+   - **Region:** closest to your location (e.g. Southeast Asia → Singapore)
 5. Click **Create new project**
-6. Wait approximately 2 minutes for provisioning to complete
+6. Wait approximately 2 minutes for provisioning
 
 ### 1.2 Run the database schema
 
-1. In the Supabase sidebar, click **SQL Editor**
+1. In the Supabase sidebar → click **SQL Editor**
 2. Click **New query**
-3. Open `C:\Users\OhmerSulit\Projects\helpdesk\supabase\schema.sql` in any text editor
-4. Select all the text → Copy
-5. Paste into the Supabase SQL Editor
-6. Click **Run** (or press Ctrl+Enter)
-7. You should see: `Success. No rows returned`
+3. Open `supabase/schema.sql` from the project folder in any text editor
+4. Select all → Copy → Paste into the Supabase SQL Editor
+5. Click **Run** (or press Ctrl+Enter)
+6. You should see: `Success. No rows returned`
 
 This creates:
 - `tickets` table with auto-incrementing ticket numbers (TKT-0001, TKT-0002...)
 - `ticket_updates` table for replies and activity
-- Row Level Security policies
+- Row Level Security (RLS) policies
 - Indexes for performance
 
 ### 1.3 Copy your API credentials
 
-1. In the Supabase sidebar, click **Project Settings** (gear icon at the bottom)
-2. Click **API**
-3. Copy and save these three values:
+1. Go to **Project Settings → API Keys**
+2. Click the **"Legacy anon, service_role API keys"** tab
+   > Use the legacy tab — keys start with `eyJ...` and are compatible with `@supabase/ssr`
+3. Copy:
 
-| Variable | Where to find it |
+| Variable | Where |
 |---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | "Project URL" section |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | "Project API keys" → anon / public |
-| `SUPABASE_SERVICE_ROLE_KEY` | "Project API keys" → service_role (click to reveal) |
-
-> Keep the service_role key secret. It bypasses Row Level Security.
+| `NEXT_PUBLIC_SUPABASE_URL` | Settings → General → Project ID → build: `https://[ID].supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Legacy tab → `anon public` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Legacy tab → `service_role` (click Reveal) |
 
 ---
 
-## Step 2 — GitHub OAuth Setup
+## Step 2 — GitHub OAuth
 
-This allows you to log in to the admin panel using your personal GitHub account.
+This lets you log in to the admin panel with your GitHub account.
 
 ### 2.1 Get the callback URL from Supabase
 
-1. In Supabase → **Authentication** → **Providers**
-2. Find **GitHub** → click to expand
-3. Toggle it **ON**
-4. Copy the **Callback URL** shown on the page. It looks like:  
-   `https://xxxxxxxxxxxx.supabase.co/auth/v1/callback`
-5. Leave this page open
+1. Supabase → **Authentication → Sign In / Providers**
+2. Click **GitHub** → toggle **ON**
+3. Copy the **Callback URL** (looks like `https://xxxx.supabase.co/auth/v1/callback`)
+4. Leave the panel open
 
 ### 2.2 Create a GitHub OAuth App
 
-1. Go to **https://github.com/settings/developers** (your personal GitHub account)
+1. Go to **https://github.com/settings/developers** (your personal account)
 2. Click **New OAuth App**
 3. Fill in:
    - **Application name:** `my-helpdesk`
-   - **Homepage URL:** `http://localhost:3000`
-   - **Authorization callback URL:** paste the URL you copied from Supabase
+   - **Homepage URL:** `http://localhost:3000` (update after Vercel deploy)
+   - **Authorization callback URL:** paste the Supabase callback URL from step 2.1
 4. Click **Register application**
-5. Copy the **Client ID** shown on the next page
-6. Click **Generate a new client secret** → copy the secret immediately (it is only shown once)
+5. Copy the **Client ID**
+6. Click **Generate a new client secret** → copy immediately (shown only once)
 
-### 2.3 Paste credentials into Supabase
+### 2.3 Save credentials in Supabase
 
-1. Go back to Supabase → **Authentication → Providers → GitHub**
-2. Paste your **Client ID** and **Client Secret**
+1. Go back to Supabase → **Authentication → Sign In / Providers → GitHub**
+2. Paste **Client ID** and **Client Secret**
 3. Click **Save**
+
+### 2.4 Configure redirect URLs
+
+1. Supabase → **Authentication → URL Configuration**
+2. Set **Site URL** to: `http://localhost:3000`
+3. Under **Redirect URLs** → Add:
+   - `http://localhost:3000/**`
+   - `http://localhost:3000/api/auth/callback`
+4. Click **Save**
 
 ---
 
-## Step 3 — Resend Email Account
+## Step 3 — Gmail App Password (Email Setup)
 
-### 3.1 Create your account
+This allows the app to send emails from your Gmail account to **any** email address — completely free, no domain required.
 
-1. Go to **https://resend.com** → click **Get Started**
-2. Sign up with your Gmail (free)
-3. Verify your email address
+> **Why not Resend?** Resend's free tier only allows sending to the email you signed up with. Gmail SMTP works with any recipient.
 
-### 3.2 Create an API Key
+### 3.1 Enable 2-Step Verification (if not already)
 
-1. In the Resend dashboard → click **API Keys** in the sidebar
-2. Click **Create API Key**
-3. Name: `my-helpdesk`
-4. Permission: **Full access**
-5. Click **Add**
-6. Copy the key — it starts with `re_` and is only shown once
+1. Go to **https://myaccount.google.com/security**
+2. Find **2-Step Verification** → turn it ON if not already enabled
 
-> **Free tier limits:** 3,000 emails/month, 100 emails/day.  
-> Emails send from `onboarding@resend.dev` on the free tier — no custom domain needed.
+### 3.2 Create an App Password
+
+1. Go to **https://myaccount.google.com/apppasswords**
+2. Sign in with the Gmail you want to send from
+3. App name: `my-helpdesk`
+4. Click **Create**
+5. Copy the **16-character password** — it's shown only once
+   (e.g. `abcd efgh ijkl mnop` — spaces are fine)
 
 ---
 
@@ -122,153 +128,155 @@ This allows you to log in to the admin panel using your personal GitHub account.
 
 ### 4.1 Create your .env.local file
 
-1. Open `C:\Users\OhmerSulit\Projects\helpdesk` in VS Code
-2. You will see `.env.example` in the root
-3. Copy `.env.example` → rename the copy to `.env.local`
-
-### 4.2 Fill in your values
-
-Open `.env.local` and fill in all 6 variables:
-
-```env
-# Supabase — from Step 1.3
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-
-# Resend — from Step 3.2
-RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxx
-
-# App URL — use localhost for now, update after Vercel deploy
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-
-# Your personal email — admin notifications go here
-ADMIN_EMAIL=your.personal.email@gmail.com
+```bash
+cp .env.example .env.local
 ```
 
-> `.env.local` is listed in `.gitignore` and will never be pushed to GitHub.
+### 4.2 Fill in all 7 variables
+
+Open `.env.local` and paste your real values:
+
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
+
+# Gmail SMTP
+GMAIL_USER=your_email@gmail.com
+GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
+
+# App
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+ADMIN_EMAIL=your_email@gmail.com
+```
+
+> `.env.local` is gitignored — it will never be committed or pushed to GitHub.
 
 ---
 
 ## Step 5 — Run Locally
 
-1. Open a terminal in `C:\Users\OhmerSulit\Projects\helpdesk`
-2. Run:
-
 ```bash
 npm run dev
 ```
 
-3. Open **http://localhost:3000** in your browser
+Open **http://localhost:3000**
 
 ### Test the full flow
 
 **Public side:**
-- Fill in the ticket submission form → submit
-- Check your email for the confirmation with tracking link
-- Open the tracking link → verify your ticket appears
+1. Fill in the ticket submission form → Submit
+2. Check your email for the confirmation with tracking link
+3. Open the tracking link — verify the ticket status page loads
 
 **Admin side:**
-- Go to **http://localhost:3000/login**
-- Click **Continue with GitHub** → authorize the app
-- You are redirected to `/admin`
-- Click a ticket to open the detail view
-- Change the status → verify an email notification is sent
-- Add a reply → verify the submitter receives an email
-- Go to `/admin/kanban` → drag a ticket card between columns
+1. Go to **http://localhost:3000/login**
+2. Click **Continue with GitHub** → authorize
+3. You land on `/admin` — TKT-0001 should be visible
+4. Click a ticket → change status → verify email notification arrives
+5. Send a reply → verify email arrives
+6. Go to `/admin/kanban` → drag a ticket to a different column
 
 ---
 
 ## Step 6 — Push to Personal GitHub
 
-1. Go to **https://github.com/new**
-2. Create a new **private** repository:
-   - **Repository name:** `my-helpdesk`
-   - **Visibility:** Private (recommended)
-   - Do NOT initialize with README, .gitignore, or license
-3. Click **Create repository**
-4. GitHub will show you the remote URL. Copy it.
+1. Go to **https://github.com/new** (your personal account)
+2. Repository name: `Ohms_HelpDesk` (or any name you prefer)
+3. Visibility: Public or Private
+4. Leave all checkboxes unchecked → **Create repository**
 
-5. Open a terminal in your project folder and run:
+Then in your terminal (inside the project folder):
 
 ```bash
-git remote add origin https://github.com/YOUR_PERSONAL_USERNAME/my-helpdesk.git
+# Authenticate GitHub CLI first (only needed once)
+gh auth login
+# Follow the prompts: GitHub.com → HTTPS → Login with browser
+
+# Push the code
+git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
 git branch -M main
 git push -u origin main
 ```
-
-Your code is now on your personal GitHub account, separate from HelloFresh.
 
 ---
 
 ## Step 7 — Deploy to Vercel
 
-### 7.1 Create your Vercel account
+### 7.1 Create Vercel account
 
-1. Go to **https://vercel.com**
-2. Click **Sign Up** → choose **Continue with GitHub** (your personal account)
-3. Authorize Vercel to access your repositories
+1. Go to **https://vercel.com** → **Sign Up** → **Continue with GitHub** (your personal account)
 
-### 7.2 Import your project
+### 7.2 Import project
 
 1. Click **Add New → Project**
-2. Find `my-helpdesk` in the repository list → click **Import**
-3. Vercel auto-detects Next.js — do not change the build settings
+2. Find your GitHub repo → click **Import**
+3. Vercel detects Next.js automatically — do NOT change build settings
 
 ### 7.3 Add environment variables
 
-Before clicking Deploy:
+**Before clicking Deploy** — expand **Environment Variables** → click **Import .env**:
 
-1. Expand the **Environment Variables** section
-2. Add all 6 variables from your `.env.local`:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `RESEND_API_KEY`
-   - `NEXT_PUBLIC_APP_URL` → set this to your Vercel URL (you can update it after the first deploy)
-   - `ADMIN_EMAIL`
+1. Open your `.env.local` → select all → copy → paste into Vercel
+2. **Change `NEXT_PUBLIC_APP_URL`** from `http://localhost:3000` to your Vercel URL:
+   ```
+   NEXT_PUBLIC_APP_URL=https://your-project-name.vercel.app
+   ```
+3. Confirm the import
 
 ### 7.4 Deploy
 
-1. Click **Deploy**
-2. Wait 2–3 minutes
-3. Vercel gives you a URL like: `https://my-helpdesk-xxxx.vercel.app`
+Click **Deploy** → wait 2–3 minutes.
 
 ### 7.5 Post-deploy updates
 
 After your first successful deploy:
 
-1. **Update NEXT_PUBLIC_APP_URL in Vercel:**
-   - Go to Vercel → your project → **Settings → Environment Variables**
-   - Update `NEXT_PUBLIC_APP_URL` to your actual Vercel URL
-   - Go to **Deployments** → click the three dots → **Redeploy** (to pick up the change)
+**Update Supabase redirect URLs:**
+1. Supabase → **Authentication → URL Configuration**
+2. Add to Redirect URLs:
+   - `https://your-project.vercel.app/**`
+   - `https://your-project.vercel.app/api/auth/callback`
+3. Click Save
 
-2. **Update your GitHub OAuth App:**
-   - Go to **https://github.com/settings/developers** → your `my-helpdesk` OAuth App
-   - Update **Homepage URL** to your Vercel URL
-   - Update **Authorization callback URL** — this stays as the Supabase URL, no change needed
+**Update GitHub OAuth App:**
+1. **https://github.com/settings/developers** → your OAuth App
+2. Update **Homepage URL** to your Vercel URL
+3. The **Callback URL** (Supabase) stays unchanged
+4. Click **Update application**
 
-3. **Verify the live deployment:**
-   - Open your Vercel URL in a browser
-   - Submit a test ticket
-   - Log in to `/admin`
-   - Check that emails arrive correctly
+**Verify the live site:**
+- Open your Vercel URL → submit a test ticket
+- Go to `/login` → sign in with GitHub
+- Check admin panel is working
 
 ---
 
-## Accounts Summary
+## Accounts Required
 
 | Service | URL | Plan | Cost |
 |---|---|---|---|
 | Supabase | supabase.com | Free | $0 |
 | GitHub | github.com | Free | $0 |
-| Resend | resend.com | Free | $0 |
-| Vercel | vercel.com | Hobby (Free) | $0 |
+| Google | Gmail | Free | $0 |
+| Vercel | vercel.com | Hobby | $0 |
 
-**Total monthly cost: $0**
+**Total: $0/month forever**
 
 ---
 
-## What to do if something breaks
+## Common Issues
 
-See `docs/TROUBLESHOOTING.md` for solutions to common issues.
+See `docs/TROUBLESHOOTING.md` for solutions to all known issues.
+
+---
+
+## Known Bugs Fixed
+
+| Bug | Fix |
+|---|---|
+| GitHub OAuth returns 405 | Changed login redirect from 307 to 303 (preserves GET method) |
+| Resend free tier restriction | Replaced Resend with Gmail SMTP (nodemailer) — no recipient restrictions |
+| `.env.local` not found | File was named `.env` instead of `.env.local` |
+| Supabase 405 on authorize | Added `localhost:3000/**` and exact callback URL to redirect allow list |

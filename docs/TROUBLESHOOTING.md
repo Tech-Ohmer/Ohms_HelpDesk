@@ -1,6 +1,8 @@
 # Troubleshooting — my-helpdesk
 
-Solutions to common errors you may encounter during setup, development, or after deployment.
+Solutions to all known errors encountered during setup, development, and deployment.
+
+**Last updated:** March 2026
 
 ---
 
@@ -8,116 +10,156 @@ Solutions to common errors you may encounter during setup, development, or after
 
 ---
 
-### Error: `NEXT_PUBLIC_SUPABASE_URL` is not set
+### Error: `NEXT_PUBLIC_SUPABASE_URL` is not set / env vars not loading
 
-**Symptom:** App crashes on startup with environment variable errors, or Supabase calls fail silently.
+**Symptom:** App crashes on startup, or Supabase calls fail silently.
 
-**Cause:** `.env.local` does not exist or is missing variables.
-
-**Fix:**
-1. Make sure you copied `.env.example` → `.env.local` (not renamed, copied)
-2. Verify `.env.local` is in the root of the project (same level as `package.json`)
-3. Make sure all 6 variables are filled in with real values, not placeholder text
-4. Restart `npm run dev` — Next.js only reads `.env.local` on startup
-
----
-
-### Error: `Invalid API key` from Supabase
-
-**Symptom:** Supabase returns 401 or "Invalid API key" errors.
-
-**Cause:** Wrong key pasted — anon key and service_role key look similar but are different.
+**Cause:** `.env.local` does not exist, or was named incorrectly (e.g. `.env` instead of `.env.local`).
 
 **Fix:**
-1. Go to Supabase → **Project Settings → API**
-2. The **anon/public** key goes in `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-3. The **service_role** key (secret, must click to reveal) goes in `SUPABASE_SERVICE_ROLE_KEY`
-4. Do not swap them — the service_role key bypasses all security if exposed publicly
+1. Make sure the file is named exactly `.env.local` (dot at the start, `.local` at the end)
+2. It must be in the root of the project (same level as `package.json`)
+3. Restart `npm run dev` — Next.js only reads env vars on startup
+4. Confirm the terminal shows `Environments: .env.local` after restart
+
+> Real case: During initial setup the file was saved as `.env`. Renaming to `.env.local` fixed it.
 
 ---
 
-### Error: Ticket submission fails with database error
+### Supabase API keys — which tab to use
 
-**Symptom:** Form submits but returns an error, no ticket appears in Supabase.
+**Symptom:** Confusion between "Publishable key" / "Secret key" (new format) vs `anon` / `service_role` (legacy format).
 
-**Cause:** The database schema was not run, or was run with errors.
+**Cause:** Supabase updated their API key format. The new `sb_publishable_...` and `sb_secret_...` keys may not be compatible with older versions of `@supabase/ssr`.
+
+**Fix:** Use the **"Legacy anon, service_role API keys"** tab in Supabase → Settings → API Keys. Keys in `eyJ...` (JWT) format are guaranteed to work with `@supabase/ssr`.
+
+---
+
+### Error: GitHub OAuth returns HTTP 405
+
+**Symptom:** After clicking "Continue with GitHub" on the login page, the browser shows `HTTP ERROR 405` on the Supabase authorize URL.
+
+**Root cause:** The login form uses `method="POST"`. The API route (`/api/auth/login`) redirected using HTTP 307 (Temporary Redirect), which preserves the POST method. When the browser followed the redirect to Supabase's `/auth/v1/authorize`, it sent a POST request — but that endpoint only accepts GET. Supabase returned 405 Method Not Allowed.
+
+**Fix applied:** Changed the redirect status to **303 (See Other)**, which always switches to GET regardless of the original method.
+
+```typescript
+// src/app/api/auth/login/route.ts
+// Before (broken — 307 preserves POST)
+return NextResponse.redirect(data.url)
+
+// After (fixed — 303 always uses GET)
+return NextResponse.redirect(data.url, { status: 303 })
+```
+
+---
+
+### Error: GitHub OAuth 405 even after the 303 fix
+
+**Symptom:** Still getting 405 from Supabase after the redirect fix.
+
+**Cause:** Supabase is blocking the redirect to `localhost:3000` because it's not in the allowed redirect URLs list.
 
 **Fix:**
-1. Go to Supabase → **SQL Editor**
-2. Run the contents of `supabase/schema.sql` again
-3. Check for any red error messages in the SQL Editor output
-4. Verify the `tickets` and `ticket_updates` tables exist in **Table Editor**
-5. Verify the `ticket_number_seq` sequence exists in **Database → Sequences**
+1. Supabase → **Authentication → URL Configuration**
+2. Set **Site URL** to: `http://localhost:3000`
+3. Under **Redirect URLs** → Add:
+   - `http://localhost:3000/**`
+   - `http://localhost:3000/api/auth/callback`
+4. Click **Save**
 
 ---
 
-### Error: GitHub OAuth redirects to wrong URL or shows "redirect_uri mismatch"
+### Error: After GitHub login, redirected back to `/login`
 
-**Symptom:** After clicking "Continue with GitHub", GitHub shows an error about mismatched redirect URI.
+**Symptom:** OAuth completes in the browser (GitHub authorizes) but you land on the login page again.
 
-**Cause:** The GitHub OAuth App's callback URL does not match what Supabase expects.
+**Cause 1:** Supabase GitHub provider not fully configured (Client ID or Secret missing).
+**Fix:** Supabase → Authentication → Sign In / Providers → GitHub → confirm both Client ID and Client Secret are saved.
+
+**Cause 2:** Session cookie not set correctly.
+**Fix:** Access the app via `http://localhost:3000` (not `127.0.0.1`). Cookies may not work on `127.0.0.1` in some browsers.
+
+---
+
+### Emails not arriving — Resend free tier restriction
+
+**Symptom:** No emails arriving. After adding error logging, terminal shows:
+
+```
+statusCode: 403
+name: 'validation_error'
+message: 'You can only send testing emails to your own email address (xxx@gmail.com).
+To send emails to other recipients, please verify a domain at resend.com/domains'
+```
+
+**Root cause:** Resend's free plan only allows sending to the email used to sign up. Any other recipient is blocked unless you verify a domain.
+
+**Fix applied:** Replaced Resend entirely with **Gmail SMTP via Nodemailer**.
+
+- Completely free
+- No domain needed
+- Sends to any email address
+- 500 emails/day via Gmail
+
+**Implementation:**
+1. Installed `nodemailer` and `@types/nodemailer`
+2. Rewrote `src/lib/email.ts` to use Gmail SMTP
+3. Added `GMAIL_USER` and `GMAIL_APP_PASSWORD` to `.env.local`
+4. Removed `RESEND_API_KEY` from env vars (no longer needed)
+
+**To get Gmail App Password:**
+1. Enable 2-Step Verification at https://myaccount.google.com/security
+2. Go to https://myaccount.google.com/apppasswords
+3. Create an app password for `my-helpdesk`
+4. Copy the 16-character password → use as `GMAIL_APP_PASSWORD`
+
+---
+
+### Emails not arriving — GMAIL_USER or GMAIL_APP_PASSWORD not set
+
+**Symptom:** Terminal shows: `[email] GMAIL_USER or GMAIL_APP_PASSWORD not set in .env.local`
+
+**Fix:** Add both variables to `.env.local` and restart `npm run dev`:
+```env
+GMAIL_USER=your_email@gmail.com
+GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
+```
+
+---
+
+### Emails not arriving — Gmail blocking the App Password
+
+**Symptom:** Terminal shows an authentication error from nodemailer about invalid credentials.
+
+**Cause:** 2-Step Verification is not enabled on the Gmail account, so App Passwords are not available.
 
 **Fix:**
-1. Go to **https://github.com/settings/developers** → your `my-helpdesk` OAuth App
-2. Check the **Authorization callback URL** — it must be exactly:  
-   `https://[your-project-ref].supabase.co/auth/v1/callback`
-3. Get the exact URL from Supabase → **Authentication → Providers → GitHub**
-4. Copy it exactly — no trailing slash, no extra characters
-5. Save the GitHub OAuth App → try logging in again
+1. Go to https://myaccount.google.com/security
+2. Enable 2-Step Verification
+3. Then go to https://myaccount.google.com/apppasswords
+4. Create a new App Password and update `GMAIL_APP_PASSWORD` in `.env.local`
 
 ---
 
-### Error: After GitHub login, redirected back to `/login` instead of `/admin`
+### Warning: "middleware" file convention is deprecated
 
-**Symptom:** OAuth completes but you land back on the login page.
+**Symptom:** Terminal shows: `The "middleware" file convention is deprecated. Please use "proxy" instead.`
 
-**Cause 1:** The Supabase GitHub provider is not enabled.  
-**Fix:** Supabase → **Authentication → Providers → GitHub** → make sure toggle is ON and saved.
+**Cause:** Next.js 16 / Turbopack changed the recommended location for the middleware file. `src/middleware.ts` triggers a deprecation warning.
 
-**Cause 2:** Session cookie is not being set correctly in development.  
-**Fix:** Make sure you are accessing the app via `http://localhost:3000` (not `127.0.0.1`). Cookies may not work on `127.0.0.1` in some browsers.
+**Status:** Warning only — does not break functionality. The middleware still runs and admin routes are protected. Can be resolved in a future Next.js update.
 
 ---
 
-### Error: Emails not arriving
+### Warning: Next.js inferred wrong workspace root
 
-**Symptom:** Ticket submitted successfully but no confirmation email received.
+**Symptom:** Terminal shows: `Next.js inferred your workspace root, but it may not be correct. We detected multiple lockfiles...`
 
-**Cause 1:** `RESEND_API_KEY` is wrong or missing.  
-**Fix:** Check `.env.local` — the key must start with `re_`. Restart `npm run dev`.
+**Cause:** There is a `package-lock.json` in `C:\Users\OhmerSulit\` (root of user directory) from another project, which confuses Turbopack's workspace detection.
 
-**Cause 2:** Email went to spam.  
-**Fix:** Check your spam/junk folder. Free Resend tier sends from `onboarding@resend.dev` which some spam filters catch.
-
-**Cause 3:** `ADMIN_EMAIL` is wrong.  
-**Fix:** Check `.env.local` — `ADMIN_EMAIL` must be a valid email address you control.
-
-**Cause 4:** Resend daily limit reached (100 emails/day on free tier).  
-**Fix:** Wait until the next day, or check Resend dashboard for usage.
-
----
-
-### Error: Tracking page shows 404
-
-**Symptom:** Clicking the tracking link returns a 404 page.
-
-**Cause 1:** `NEXT_PUBLIC_APP_URL` is set to the wrong URL.  
-**Fix:** In development, set `NEXT_PUBLIC_APP_URL=http://localhost:3000`. After deployment, set it to your Vercel URL.
-
-**Cause 2:** The ticket was not actually created (silent form failure).  
-**Fix:** Check the browser console and Next.js terminal for errors when submitting.
-
----
-
-### Error: Kanban drag-and-drop does not work
-
-**Symptom:** Ticket cards cannot be dragged, or dropping does nothing.
-
-**Cause 1:** JavaScript error in the console blocking @dnd-kit.  
-**Fix:** Open browser developer tools → Console tab → look for any red errors.
-
-**Cause 2:** Touch/pointer events not registering.  
-**Fix:** @dnd-kit uses PointerSensor with a 5px activation distance — click and drag at least 5 pixels before releasing. This prevents accidental drags on click.
+**Status:** Warning only — does not affect functionality. The app runs correctly on `localhost:3000`.
 
 ---
 
@@ -125,82 +167,78 @@ Solutions to common errors you may encounter during setup, development, or after
 
 ---
 
-### Error: Build fails on Vercel
-
-**Symptom:** Vercel deployment fails with TypeScript or build errors.
+### Build fails on Vercel
 
 **Fix:**
-1. Run `npx tsc --noEmit` locally first — fix any TypeScript errors
+1. Run `npx tsc --noEmit` locally — fix any TypeScript errors first
 2. Run `npm run build` locally — fix any build errors
-3. Push the fixed code to GitHub → Vercel will redeploy automatically
+3. Push the fixed code → Vercel auto-redeploys
 
 ---
 
-### Error: App works locally but fails on Vercel
+### App works locally but broken on Vercel
 
-**Symptom:** Everything works with `npm run dev` but breaks after deployment.
-
-**Cause:** Missing environment variables on Vercel.
-
-**Fix:**
-1. Go to Vercel → your project → **Settings → Environment Variables**
-2. Make sure all 6 variables are added (not just some)
-3. Make sure `NEXT_PUBLIC_APP_URL` is set to your actual Vercel URL (not `localhost`)
-4. After adding/changing env vars → go to **Deployments** → **Redeploy** the latest
-
----
-
-### Error: Admin login works locally but fails on Vercel
-
-**Symptom:** GitHub OAuth works in development but not on the deployed URL.
-
-**Cause:** GitHub OAuth App is still configured with `localhost` URLs.
-
-**Fix:**
-1. Go to **https://github.com/settings/developers** → your `my-helpdesk` OAuth App
-2. Update **Homepage URL** to your Vercel URL (e.g. `https://my-helpdesk-xxxx.vercel.app`)
-3. The **Authorization callback URL** stays as the Supabase URL — no change needed
-4. Save the changes
-
----
-
-### Error: Tracking links in emails point to localhost
-
-**Symptom:** Emails are sent but the tracking links go to `http://localhost:3000/track/...` instead of your live URL.
-
-**Cause:** `NEXT_PUBLIC_APP_URL` is still set to `localhost` in Vercel environment variables.
+**Most common cause:** Missing or wrong environment variables on Vercel.
 
 **Fix:**
 1. Vercel → your project → **Settings → Environment Variables**
-2. Edit `NEXT_PUBLIC_APP_URL` → set it to your Vercel URL
+2. Verify all 7 variables are present
+3. Verify `NEXT_PUBLIC_APP_URL` is set to your Vercel URL (not `localhost`)
+4. After changing env vars → **Deployments → Redeploy**
+
+---
+
+### Admin login works locally but not on Vercel (405 again)
+
+**Cause:** The Redirect URLs in Supabase only have `localhost` entries.
+
+**Fix:**
+1. Supabase → **Authentication → URL Configuration → Redirect URLs**
+2. Add:
+   - `https://your-project.vercel.app/**`
+   - `https://your-project.vercel.app/api/auth/callback`
+3. Save
+
+---
+
+### Email tracking links point to localhost after deployment
+
+**Cause:** `NEXT_PUBLIC_APP_URL` is still set to `http://localhost:3000` in Vercel env vars.
+
+**Fix:**
+1. Vercel → project → **Settings → Environment Variables**
+2. Update `NEXT_PUBLIC_APP_URL` to `https://your-project.vercel.app`
 3. Redeploy
 
 ---
 
-### Error: `supabase/schema.sql` tables already exist
+### Supabase schema errors when running schema.sql
 
-**Symptom:** Running the schema SQL a second time gives errors like "relation already exists".
+**Symptom:** SQL Editor shows errors like "relation already exists".
 
-**Cause:** You ran the schema before and the tables are already created.
+**Cause:** Schema was already run before — tables exist.
 
-**Fix:** This is harmless — the schema uses `CREATE TABLE IF NOT EXISTS` and `CREATE EXTENSION IF NOT EXISTS`. The error messages for sequences and triggers are safe to ignore if everything was already set up correctly. Verify your tables exist in Supabase → **Table Editor**.
+**Status:** Harmless — schema uses `CREATE TABLE IF NOT EXISTS`. Verify tables exist in Supabase → **Table Editor**.
 
 ---
 
 ## General Tips
 
-- **Always restart `npm run dev`** after changing `.env.local` — Next.js does not hot-reload environment variables.
-- **Check Supabase logs** for database errors: Supabase → **Logs → Postgres**.
-- **Check Resend dashboard** to see if emails were sent and any delivery errors.
-- **Check Vercel logs** for runtime errors: Vercel → your project → **Logs**.
-- **Use Supabase Table Editor** to inspect what data is actually in the database when debugging ticket creation issues.
+- **Always restart `npm run dev`** after editing `.env.local`
+- **Check Vercel logs** for runtime errors: Vercel → project → **Logs**
+- **Check Supabase logs** for database errors: Supabase → **Logs → Postgres**
+- **Check terminal output** — email errors and server action errors are logged there
+- **Use Supabase Table Editor** to inspect actual data when debugging ticket creation
 
 ---
 
-## Getting More Help
+## Reference Links
 
-- **Next.js docs:** https://nextjs.org/docs
-- **Supabase docs:** https://supabase.com/docs
-- **Resend docs:** https://resend.com/docs
-- **@dnd-kit docs:** https://docs.dndkit.com
-- **Vercel docs:** https://vercel.com/docs
+| Resource | URL |
+|---|---|
+| Next.js docs | https://nextjs.org/docs |
+| Supabase docs | https://supabase.com/docs |
+| @dnd-kit docs | https://docs.dndkit.com |
+| Nodemailer docs | https://nodemailer.com/about |
+| Vercel docs | https://vercel.com/docs |
+| Gmail App Passwords | https://myaccount.google.com/apppasswords |

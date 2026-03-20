@@ -1,6 +1,8 @@
 # my-helpdesk
 
-A fully free, personal helpdesk ticketing system built with Next.js 15, Supabase, Resend, and @dnd-kit.
+A fully free, personal helpdesk ticketing system built with Next.js 15, Supabase, Gmail SMTP, and @dnd-kit.
+
+**Live:** https://ohms-help-desk.vercel.app
 
 ## Stack
 
@@ -9,7 +11,7 @@ A fully free, personal helpdesk ticketing system built with Next.js 15, Supabase
 | Framework  | Next.js 15 (App Router) | Free  |
 | Database   | Supabase (free tier)    | Free  |
 | Auth       | Supabase + GitHub OAuth | Free  |
-| Email      | Resend (3,000/month)    | Free  |
+| Email      | Gmail SMTP + Nodemailer | Free  |
 | Hosting    | Vercel (free tier)      | Free  |
 | Drag/Drop  | @dnd-kit                | Free  |
 | Code host  | Personal GitHub repo    | Free  |
@@ -58,11 +60,12 @@ npm install
    - **Authorization callback URL:** `https://<your-project>.supabase.co/auth/v1/callback`
 3. Copy **Client ID** and generate a **Client Secret** → paste both into Supabase
 
-### 4. Create a Resend account (free)
+### 4. Set up Gmail App Password (free email, no domain needed)
 
-1. Go to [resend.com](https://resend.com) → create a free account
-2. Create an API key → `RESEND_API_KEY`
-3. Free tier sends from `onboarding@resend.dev` (no custom domain needed)
+1. Go to **https://myaccount.google.com/security** → enable **2-Step Verification** if not already on
+2. Go to **https://myaccount.google.com/apppasswords**
+3. App name: `my-helpdesk` → click **Create**
+4. Copy the 16-character password — shown only once
 
 ### 5. Set environment variables
 
@@ -76,9 +79,10 @@ Edit `.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
-RESEND_API_KEY=re_xxxx
+GMAIL_USER=your_gmail@gmail.com
+GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-ADMIN_EMAIL=your_personal_email@gmail.com
+ADMIN_EMAIL=your_gmail@gmail.com
 ```
 
 ### 6. Run locally
@@ -113,7 +117,10 @@ Open [http://localhost:3000](http://localhost:3000)
 4. Change `NEXT_PUBLIC_APP_URL` to your Vercel deployment URL
 5. Deploy
 
-After first deploy, also update your Supabase GitHub OAuth app callback URL to your Vercel domain.
+After first deploy:
+- Update `NEXT_PUBLIC_APP_URL` in Vercel env vars to your live URL → redeploy
+- Add your Vercel URL to Supabase → **Authentication → URL Configuration → Redirect URLs**
+- Update your GitHub OAuth App **Homepage URL** to your Vercel URL
 
 ---
 
@@ -147,7 +154,7 @@ src/
       KanbanBoard.tsx            # Drag-and-drop Kanban (client)
   lib/
     utils.ts                     # cn(), formatDate(), formatDateShort()
-    email.ts                     # Resend email functions
+    email.ts                     # Gmail SMTP email functions (nodemailer)
     supabase/
       client.ts                  # Browser Supabase client
       server.ts                  # Server Supabase client + service client
