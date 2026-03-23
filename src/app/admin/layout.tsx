@@ -7,13 +7,23 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? process.env.ADMIN_EMAIL ?? '')
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean)
 
+const ADMIN_USERNAMES = (process.env.ADMIN_GITHUB_USERNAMES ?? '')
+  .split(',')
+  .map((u) => u.trim().toLowerCase())
+  .filter(Boolean)
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const userEmail = user.email?.toLowerCase() ?? ''
-  if (ADMIN_EMAILS.length > 0 && !ADMIN_EMAILS.includes(userEmail)) {
+  const userGithubUsername = (user.user_metadata?.user_name ?? '').toLowerCase()
+
+  const emailAllowed = ADMIN_EMAILS.length === 0 || ADMIN_EMAILS.includes(userEmail)
+  const usernameAllowed = ADMIN_USERNAMES.length > 0 && ADMIN_USERNAMES.includes(userGithubUsername)
+
+  if (!emailAllowed && !usernameAllowed) {
     redirect('/unauthorized')
   }
 
