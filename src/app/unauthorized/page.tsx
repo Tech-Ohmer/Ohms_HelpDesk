@@ -1,15 +1,30 @@
 import Link from 'next/link'
 
-export default function UnauthorizedPage() {
+export default async function UnauthorizedPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ email?: string; username?: string }>
+}) {
+  const { email, username } = await searchParams
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-md text-center">
         <div className="text-5xl mb-4">🔒</div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-        <p className="text-gray-500 text-sm mb-6">
+        <p className="text-gray-500 text-sm mb-4">
           Your account does not have admin access to this helpdesk.
-          If you believe this is a mistake, contact the helpdesk owner.
         </p>
+
+        {/* Debug info — shows exactly what the system received */}
+        {(email || username) && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-5 text-left">
+            <p className="text-xs font-semibold text-yellow-700 mb-1">Debug info (add this to ADMIN_EMAILS in Vercel):</p>
+            {email && <p className="text-xs font-mono text-yellow-900">Email: <strong>{email}</strong></p>}
+            {username && <p className="text-xs font-mono text-yellow-900">GitHub username: <strong>{username}</strong></p>}
+          </div>
+        )}
+
         <div className="flex flex-col gap-3">
           <Link
             href="/"

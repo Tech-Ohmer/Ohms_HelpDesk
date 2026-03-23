@@ -24,7 +24,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const usernameAllowed = ADMIN_USERNAMES.length > 0 && ADMIN_USERNAMES.includes(userGithubUsername)
 
   if (!emailAllowed && !usernameAllowed) {
-    redirect('/unauthorized')
+    redirect(`/unauthorized?email=${encodeURIComponent(userEmail)}&username=${encodeURIComponent(userGithubUsername)}`)
   }
 
   return (
