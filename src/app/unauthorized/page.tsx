@@ -1,0 +1,32 @@
+import Link from 'next/link'
+
+export default function UnauthorizedPage() {
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+      <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-md text-center">
+        <div className="text-5xl mb-4">🔒</div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
+        <p className="text-gray-500 text-sm mb-6">
+          Your account does not have admin access to this helpdesk.
+          If you believe this is a mistake, contact the helpdesk owner.
+        </p>
+        <div className="flex flex-col gap-3">
+          <Link
+            href="/"
+            className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            Submit a Ticket
+          </Link>
+          <form action="/api/auth/logout" method="POST">
+            <button
+              type="submit"
+              className="w-full border border-gray-200 text-gray-600 px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+            >
+              Sign out and try a different account
+            </button>
+          </form>
+        </div>
+      </div>
+    </main>
+  )
+}

@@ -132,7 +132,7 @@ This allows the app to send emails from your Gmail account to **any** email addr
 cp .env.example .env.local
 ```
 
-### 4.2 Fill in all 7 variables
+### 4.2 Fill in all 8 variables
 
 Open `.env.local` and paste your real values:
 
@@ -145,6 +145,10 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
 # Gmail SMTP
 GMAIL_USER=your_email@gmail.com
 GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
+
+# Admin access — comma-separated GitHub emails allowed to access /admin
+# To add more admins later: ADMIN_EMAILS=you@gmail.com,other@gmail.com
+ADMIN_EMAILS=your_email@gmail.com
 
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
