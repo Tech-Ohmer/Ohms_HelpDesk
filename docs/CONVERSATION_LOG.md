@@ -237,19 +237,41 @@ To send emails to other recipients, please verify a domain at resend.com/domains
 
 ---
 
-## 10. Git Commit History
+## 10. Admin Whitelist Feature
+
+**Ohmer asked:** Can I add other admins to check tickets?
+
+**Answer:** Yes — implemented via `ADMIN_EMAILS` environment variable.
+
+**How it works:**
+- `src/app/admin/layout.tsx` reads `ADMIN_EMAILS` (comma-separated list of GitHub emails)
+- If the logged-in user's email is NOT in the list → redirected to `/unauthorized`
+- If the list is empty, falls back to `ADMIN_EMAIL` (single admin)
+- Adding/removing admins requires only an env var change in Vercel + redeploy — no code changes
+
+**Security fix also applied:** Previously, ANY GitHub user who logged in could access `/admin`. The whitelist now prevents this.
+
+**Ohmer's decision:** Only `ohmersulit@gmail.com` for now. Others can be added via Vercel env vars when needed.
+
+**Full guide:** `docs/ADMIN_MANAGEMENT.md`
+
+---
+
+## 11. Git Commit History
 
 | Commit | Description |
 |---|---|
 | `feat: initial scaffold` | All 24 source files, schema, README |
-| `docs: add setup guide, architecture, conversation log and troubleshooting` | 4 doc files, 991 lines |
+| `docs: add setup guide, architecture, conversation log and troubleshooting` | 4 doc files |
 | `fix: use 303 redirect in auth login route` | Fixed GitHub OAuth 405 error |
 | `fix: replace Resend with Gmail SMTP via nodemailer` | Email to any recipient, free |
-| `docs: update all documentation for deployment` | This update |
+| `docs: update all documentation to reflect Gmail SMTP and deployment` | Full doc update |
+| `feat: add admin whitelist via ADMIN_EMAILS env var` | Multi-admin support + security fix |
+| `docs: update all docs to reflect admin whitelist feature` | This update |
 
 ---
 
-## 11. Key Decisions Summary
+## 12. Key Decisions Summary
 
 | Decision | Choice | Reason |
 |---|---|---|
@@ -261,21 +283,22 @@ To send emails to other recipients, please verify a domain at resend.com/domains
 | Auth method | GitHub OAuth | Personal GitHub exists |
 | Redirect status | 303 See Other | Ensures GET for OAuth flow |
 | Supabase keys | Legacy `eyJ...` format | Compatible with @supabase/ssr |
+| Admin access | ADMIN_EMAILS env var | No code changes to add/remove admins |
 | Separation | Personal project only | Not related to work |
 
 ---
 
-## 12. Next Session Hints
+## 13. Next Session Hints
 
 If you continue this project in a future session:
 
 - **Project is at:** `C:\Users\OhmerSulit\Projects\helpdesk`
 - **Live URL:** `https://ohms-help-desk.vercel.app`
 - **GitHub:** `https://github.com/Tech-Ohmer/Ohms_HelpDesk`
-- **Run locally:** `npm run dev` → `http://localhost:3000`
-- **Admin login:** GitHub OAuth with Tech-Ohmer account
-- **Email:** Gmail SMTP via `GMAIL_USER` + `GMAIL_APP_PASSWORD` in `.env.local`
+- **Admin login:** GitHub OAuth with Tech-Ohmer account (ohmersulit@gmail.com)
+- **Email:** Gmail SMTP via `GMAIL_USER` + `GMAIL_APP_PASSWORD`
 - **Database:** Supabase project `Tech-Ohmer's Project` (ID: `qlluqifhljbnbhfyuxeu`)
 - **All docs are in:** `C:\Users\OhmerSulit\Projects\helpdesk\docs\`
-- **To deploy changes:** `git push origin main` → Vercel auto-deploys
+- **To add an admin:** Vercel → Settings → ADMIN_EMAILS → add email → auto-redeploys
+- **To deploy changes:** `git push origin main` → Vercel auto-deploys in ~2 min
 - **Do NOT use:** HelloFresh GitHub org, FusionKitchen repo, Jira, or any work tools

@@ -30,6 +30,8 @@ A fully free, personal helpdesk ticketing system built with Next.js 15, Supabase
 - Kanban board with drag-and-drop (Open → In Progress → Resolved → Closed)
 - Email notifications on status change and admin reply
 - GitHub OAuth login for the admin panel
+- Admin whitelist — only approved emails can access the admin panel
+- Access denied page for unauthorized login attempts
 
 ---
 
@@ -83,6 +85,7 @@ GMAIL_USER=your_gmail@gmail.com
 GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ADMIN_EMAIL=your_gmail@gmail.com
+ADMIN_EMAILS=your_gmail@gmail.com
 ```
 
 ### 6. Run locally
@@ -103,6 +106,7 @@ Open [http://localhost:3000](http://localhost:3000)
 | `/track`                  | Anyone         | Enter tracking token                 |
 | `/track/[token]`          | Anyone         | View ticket status + activity        |
 | `/login`                  | Anyone         | Admin login via GitHub OAuth         |
+| `/unauthorized`           | Anyone         | Access denied page (non-whitelisted) |
 | `/admin`                  | Admin only     | Ticket list with search + filters    |
 | `/admin/tickets/[id]`     | Admin only     | Ticket detail, replies, status       |
 | `/admin/kanban`           | Admin only     | Drag-and-drop Kanban board           |
@@ -119,8 +123,11 @@ Open [http://localhost:3000](http://localhost:3000)
 
 After first deploy:
 - Update `NEXT_PUBLIC_APP_URL` in Vercel env vars to your live URL → redeploy
+- Add `ADMIN_EMAILS` to Vercel env vars (comma-separated list of allowed admin GitHub emails)
 - Add your Vercel URL to Supabase → **Authentication → URL Configuration → Redirect URLs**
 - Update your GitHub OAuth App **Homepage URL** to your Vercel URL
+
+To add or remove admins later — see `docs/ADMIN_MANAGEMENT.md`
 
 ---
 
@@ -135,8 +142,10 @@ src/
     track/
       page.tsx                   # Tracking token entry page
       [token]/page.tsx           # Ticket status + activity
+    unauthorized/
+      page.tsx                   # Access denied page for non-whitelisted users
     admin/
-      layout.tsx                 # Admin shell with nav + auth guard
+      layout.tsx                 # Admin shell + auth guard + ADMIN_EMAILS whitelist
       page.tsx                   # Ticket list (server component)
       kanban/page.tsx            # Kanban board
       tickets/[id]/page.tsx      # Ticket detail (server component)

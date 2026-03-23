@@ -114,7 +114,7 @@ No session → redirect to /login
        ↓
 User clicks "Continue with GitHub"
        ↓
-POST /api/auth/login
+POST /api/auth/login  (HTTP 303 redirect → forces GET for OAuth)
        ↓
 Supabase generates GitHub OAuth URL
        ↓
@@ -126,11 +126,29 @@ Supabase redirects to GET /api/auth/callback?code=xxx
        ↓
 Server exchanges code for session (stored in cookie)
        ↓
-Redirect to /admin ✓
+admin/layout.tsx checks ADMIN_EMAILS whitelist
+       ↓
+Email in list → /admin ✓
+Email NOT in list → /unauthorized ✗
 ```
 
 Session is stored in an HTTP-only cookie managed by `@supabase/ssr`.  
 The `middleware.ts` file refreshes the session on every request and protects all `/admin/*` routes.
+
+## Admin Whitelist
+
+Access to `/admin` is controlled by the `ADMIN_EMAILS` environment variable.
+
+```
+ADMIN_EMAILS=ohmersulit@gmail.com,second@gmail.com
+```
+
+- Set in Vercel → **Settings → Environment Variables**
+- Comma-separated list of GitHub account primary emails
+- Falls back to `ADMIN_EMAIL` if `ADMIN_EMAILS` is not set
+- Adding/removing admins requires only an env var change + redeploy — no code changes
+
+See `docs/ADMIN_MANAGEMENT.md` for the full guide on adding and removing admins.
 
 ---
 
@@ -156,7 +174,7 @@ Three emails are sent automatically:
 **File:** `src/lib/email.ts` → `sendAdminReplyEmail()`  
 **Action:** `src/app/actions/tickets.ts` → `addAdminReply()`
 
-All emails are sent via Resend using the `onboarding@resend.dev` sender address (free tier, no domain verification needed).
+All emails are sent via Gmail SMTP using Nodemailer. The sender address is the `GMAIL_USER` Gmail account.
 
 ---
 
@@ -170,8 +188,9 @@ All emails are sent via Resend using the `onboarding@resend.dev` sender address 
 | `/track` | `src/app/track/page.tsx` | Enter tracking token manually |
 | `/track/[token]` | `src/app/track/[token]/page.tsx` | Ticket status + activity + progress stepper |
 | `/login` | `src/app/login/page.tsx` | Admin login page (GitHub OAuth button) |
+| `/unauthorized` | `src/app/unauthorized/page.tsx` | Access denied page for non-whitelisted users |
 
-### Admin routes (requires GitHub login)
+### Admin routes (requires GitHub login + ADMIN_EMAILS whitelist)
 
 | Route | File | Description |
 |---|---|---|
