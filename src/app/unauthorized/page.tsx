@@ -1,12 +1,6 @@
 import Link from 'next/link'
 
-export default async function UnauthorizedPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ email?: string; username?: string }>
-}) {
-  const { email, username } = await searchParams
-
+export default async function UnauthorizedPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-md text-center">
@@ -15,15 +9,6 @@ export default async function UnauthorizedPage({
         <p className="text-gray-500 text-sm mb-4">
           Your account does not have admin access to this helpdesk.
         </p>
-
-        {/* Debug info — shows exactly what the system received */}
-        {(email || username) && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-5 text-left">
-            <p className="text-xs font-semibold text-yellow-700 mb-1">Debug info (add this to ADMIN_EMAILS in Vercel):</p>
-            {email && <p className="text-xs font-mono text-yellow-900">Email: <strong>{email}</strong></p>}
-            {username && <p className="text-xs font-mono text-yellow-900">GitHub username: <strong>{username}</strong></p>}
-          </div>
-        )}
 
         <div className="flex flex-col gap-3">
           <Link
